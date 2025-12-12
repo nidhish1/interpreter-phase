@@ -6,6 +6,8 @@
 
 This project implements cycle-accurate simulators of a 32-bit RISC-V processor in Python, supporting both single-stage and five-stage pipelined processor architectures with comprehensive hazard handling.
 
+> 📘 **For the complete detailed submission report with schematics, code explanations, and performance analysis, please refer to [`final-submission.pdf`](./final-submission.pdf)**
+
 ---
 
 ## ⚡ Quick Reference
@@ -22,7 +24,8 @@ cat results/testcase1/PerformanceMetrics.txt
 ```
 
 **Key Files:**
-- 📄 `submission_simple.latex` - Final report (use this one!)
+- 📄 `final-submission.pdf` - **Detailed Submission Report** (Complete documentation!)
+- 📄 `submission.latex` - LaTeX source for the report
 - 📄 `mermaid_diagrams.md` - Schematic diagrams
 - 💻 `code/main.py` - Simulator implementation
 
