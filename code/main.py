@@ -77,15 +77,15 @@ class DataMem(object):
 
     def writeDataMem(self, Address, WriteData):
         wd = WriteData & 0xFFFFFFFF
-        # Write in little-endian format (LSB at lowest address)
-        bytes_le = [wd & 0xFF, (wd >> 8) & 0xFF, (wd >> 16) & 0xFF, (wd >> 24) & 0xFF]
+        # Write in big-endian format (MSB at lowest address)
+        bytes_be = [(wd >> 24) & 0xFF, (wd >> 16) & 0xFF, (wd >> 8) & 0xFF, wd & 0xFF]
         for i in range(4):
             idx = Address + i
             if idx < 0:
                 continue
             while idx >= len(self.DMem):
                 self.DMem.append("00000000")
-            self.DMem[idx] = format(bytes_le[i], "08b")
+            self.DMem[idx] = format(bytes_be[i], "08b")
 
     def outputDataMem(self):
         os.makedirs(self.output_dir, exist_ok=True)
@@ -179,8 +179,8 @@ def sign_extend(value, bits):
 class SingleStageCore(Core):
     def __init__(self, ioDir, imem, dmem):
         super(SingleStageCore, self).__init__(ioDir, imem, dmem)
-        self.myRF = RegisterFile(ioDir, "SS")
-        self.opFilePath = os.path.join(ioDir, "StateResult_SS.txt")
+        self.myRF = RegisterFile(self.outDir, "SS")
+        self.opFilePath = os.path.join(self.outDir, "StateResult_SS.txt")
 
     def step(self):
         PC = self.state.IF["PC"]
@@ -240,11 +240,11 @@ class SingleStageCore(Core):
             elif funct3 == 0x6: write_back_data = (rs1_val | (imm_i & 0xFFFFFFFF))
             elif funct3 == 0x7: write_back_data = (rs1_val & (imm_i & 0xFFFFFFFF))
             write_back_enable = True
-        elif opcode == 0x03 and funct3 == 0x2: # LW
+        elif opcode == 0x03: # LW (load word) - funct3 can be 0x0, 0x1, or 0x2
             addr = (rs1_val + imm_i) & 0xFFFFFFFF
             write_back_data = self.ext_dmem.readInstr(addr)
             write_back_enable = True
-        elif opcode == 0x23 and funct3 == 0x2: # SW
+        elif opcode == 0x23: # SW (store word) - funct3 can be 0x0, 0x1, or 0x2
             addr = (rs1_val + imm_s) & 0xFFFFFFFF
             self.ext_dmem.writeDataMem(addr, rs2_val)
         elif opcode == 0x63: # BEQ/BNE
@@ -280,8 +280,8 @@ class SingleStageCore(Core):
 class FiveStageCore(Core):
     def __init__(self, ioDir, imem, dmem):
         super(FiveStageCore, self).__init__(ioDir, imem, dmem)
-        self.myRF = RegisterFile(ioDir, "FS")
-        self.opFilePath = os.path.join(ioDir, "StateResult_FS.txt")
+        self.myRF = RegisterFile(self.outDir, "FS")
+        self.opFilePath = os.path.join(self.outDir, "StateResult_FS.txt")
         self.state.IF["PC"] = 0
         self.state.IF["nop"] = False
         self.state.IF_ID["nop"] = True
@@ -326,11 +326,11 @@ class FiveStageCore(Core):
     def WB_stage(self):
         if self.state.MEM_WB["nop"]:
             return
+        # Count all instructions that reach WB (including stores, branches, etc.)
+            self.retired_instructions += 1
         # Write to register file if needed
         if self.state.MEM_WB["RegWrite"] and self.state.MEM_WB["rd"] != 0:
             self.myRF.writeRF(self.state.MEM_WB["rd"], self.state.MEM_WB["WriteData"] & 0xFFFFFFFF)
-        # Count all instructions that reach WB (including stores, branches, etc.)
-            self.retired_instructions += 1
 
     def MEM_stage(self):
         if self.state.EX_MEM["nop"]:
