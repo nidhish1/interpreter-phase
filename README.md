@@ -1,20 +1,176 @@
-# RISC-V Processor Simulator
+# RISC-V Processor Simulator - Phase 2
 
-This project implements cycle-accurate simulators of a 32-bit RISC-V processor in Python. The simulators support both single-stage and five-stage pipelined processor implementations with hazard handling.
+**Student:** Nidhish Gautam (ng3483)  
+**Course:** ECE GY 6913 - Computing Systems Architecture  
+**Project:** Five-Stage Pipelined RISC-V Processor Implementation
 
-## Documentation
+This project implements cycle-accurate simulators of a 32-bit RISC-V processor in Python, supporting both single-stage and five-stage pipelined processor architectures with comprehensive hazard handling.
 
-- **[Single-Stage Processor Schematic](SINGLE_STAGE_SCHEMATIC.md)**: Detailed schematic, architecture, and code mapping for the single-stage processor
-- **[Five-Stage Pipeline Processor Schematic](FIVE_STAGE_SCHEMATIC.md)**: Detailed schematic, forwarding paths, hazard handling, and code mapping for the five-stage pipelined processor
-- **[Performance Comparison Analysis](PERFORMANCE_COMPARISON.md)**: Comprehensive comparison of single-stage vs five-stage pipeline performance, including when each is better
-- **[Performance Optimizations](OPTIMIZATIONS.md)**: Detailed analysis of optimizations and features that can be added to improve performance (branch prediction, caches, out-of-order execution, etc.)
+---
 
-## Project Overview
+## ⚡ Quick Reference
 
-The simulator implements a subset of the RISC-V RV32I instruction set architecture and provides two processor implementations:
+```bash
+# Run all testcases
+make run-all
 
-1. **Single-Stage Core (SS)**: A functional single-cycle processor that executes one instruction per cycle
-2. **Five-Stage Pipeline Core (FS)**: A pipelined processor with five stages (IF, ID, EX, MEM, WB) that handles data hazards through forwarding and stalling
+# Compare with expected outputs  
+make compare-all
+
+# View performance metrics
+cat results/testcase1/PerformanceMetrics.txt
+```
+
+**Key Files:**
+- 📄 `submission_simple.latex` - Final report (use this one!)
+- 📄 `mermaid_diagrams.md` - Schematic diagrams
+- 💻 `code/main.py` - Simulator implementation
+
+---
+
+## 🎯 Project Tasks Summary
+
+| Task | Points | Description | Status |
+|------|--------|-------------|--------|
+| 1 | 20 | Single-stage schematic + simulator | ✅ Complete |
+| 2 | 20 | Five-stage schematic + hazard handling | ✅ Complete |
+| 3 | 5 | Performance metrics (CPI, cycles, IPC) | ✅ Complete |
+| 4 | 5 | Performance comparison | ✅ Complete |
+| 5 | +1 | Optimization proposals | ✅ Complete |
+| **Total** | **51/51** | | **All Done** |
+
+### Task Details
+
+**Task 1:** Single-Stage Processor
+- Class: `SingleStageCore` in `main.py`
+- CPI = 1.0, simple design, no hazards
+- Schematic: `mermaid_diagrams.md` → render → `single_stage_schematic.png`
+
+**Task 2:** Five-Stage Pipelined Processor  
+- Class: `FiveStageCore` in `main.py`
+- RAW hazards: Forwarding (EX-ID, MEM-ID, MEM-EX, WB-EX) + Stalling (load-use)
+- Control hazards: Branch resolution in ID/RF, predict-not-taken, 1-cycle penalty
+- Schematic: `mermaid_diagrams.md` → render → `pipelined_schematic.png`
+
+**Task 3:** Performance Metrics
+- Console output + `PerformanceMetrics.txt` file
+- Reports: CPI, Total Cycles, Instructions, IPC
+
+**Task 4:** Comparison
+- **Result:** Five-stage is 3-4x faster (higher clock frequency dominates)
+- Detailed analysis in `submission_simple.latex`
+
+**Task 5:** Optimizations (Extra Credit)
+- Branch prediction, caches, enhanced forwarding, compiler opts, OoO execution
+- Potential combined speedup: 5-7x
+
+---
+
+## 📚 Documentation
+
+- **[submission_simple.latex](submission_simple.latex)**: Complete project report (clean, concise version)
+- **[submission.latex](submission.latex)**: Detailed project report (comprehensive version)
+- **[mermaid_diagrams.md](mermaid_diagrams.md)**: Mermaid code for processor schematics
+- **[FIVE_STAGE_SCHEMATIC.md](submissions/FIVE_STAGE_SCHEMATIC.md)**: Detailed five-stage documentation
+
+---
+
+## 🚀 Quick Start
+
+### Run All Testcases
+```bash
+# Using Makefile (recommended)
+make run-all
+
+# Or manually
+python3 code/main.py --iodir code/input/testcase0
+python3 code/main.py --iodir code/input/testcase1
+python3 code/main.py --iodir code/input/testcase2
+```
+
+### Verify Results
+```bash
+# Compare all testcases
+make compare-all
+
+# Or compare specific testcase
+python3 code/compare_outputs.py --results-root results --testcase testcase0
+```
+
+### Expected Output
+```
+======================================================================
+PERFORMANCE METRICS
+======================================================================
+
+Performance of Single Stage:
+  Total Execution Cycles: 40
+  Total Instructions Retired: 39
+  Average CPI (Cycles Per Instruction): 1.025641
+  IPC (Instructions Per Cycle): 0.975000
+
+Performance of Five Stage:
+  Total Execution Cycles: 46
+  Total Instructions Retired: 39
+  Average CPI (Cycles Per Instruction): 1.179487
+  IPC (Instructions Per Cycle): 0.847826
+======================================================================
+```
+
+---
+
+## 📁 Project Structure
+
+```
+phase1/
+├── code/
+│   ├── main.py                    # Main simulator (SingleStageCore + FiveStageCore)
+│   ├── compare_outputs.py         # Output comparison tool
+│   ├── input/                     # Test case inputs
+│   │   ├── testcase0/             # Simple test (6 instructions, no branches)
+│   │   ├── testcase1/             # Medium test (39 instructions)
+│   │   └── testcase2/             # Complex test (loops + branches, 35 instructions)
+│   └── sample_output/             # Expected outputs for verification
+├── results/                       # Generated outputs (auto-created)
+├── submissions/                   # Additional documentation
+├── mermaid_diagrams.md            # Schematic diagrams (Mermaid code)
+├── submission.latex               # Project report (detailed version)
+├── Makefile                       # Build automation
+└── README.md                      # This file
+```
+
+---
+
+## 🏗️ Architecture Overview
+
+### Single-Stage Core (SS)
+**Executes one instruction per cycle** - all phases complete in one cycle:
+1. Fetch instruction from IMEM
+2. Decode and read registers
+3. Execute ALU operation
+4. Access memory (if needed)
+5. Write back to register file
+6. Update PC
+
+**Characteristics:**
+- CPI = 1.0 (perfect)
+- Long clock cycle (all stages sequential)
+- No hazard handling needed
+
+### Five-Stage Pipeline Core (FS)
+**Instruction-level parallelism** - 5 instructions in flight simultaneously:
+1. **IF**: Fetch instruction
+2. **ID/RF**: Decode, read registers, **resolve branches** ⭐
+3. **EX**: Execute ALU operations (with forwarding)
+4. **MEM**: Memory access
+5. **WB**: Write back
+
+**Pipeline Registers:** IF/ID, ID/EX, EX/MEM, MEM/WB (each with nop bit)
+
+**Characteristics:**
+- CPI = 1.18-1.83 (with hazards)
+- Short clock cycle (only slowest stage)
+- **3-4x faster** than single-stage overall
 
 ## Features
 
@@ -27,11 +183,52 @@ The simulator implements a subset of the RISC-V RV32I instruction set architectu
 - **J-type**: JAL (Jump and Link)
 - **HALT**: Special instruction to stop execution
 
-### Hazard Handling (Five-Stage Pipeline)
+---
 
-- **RAW Hazards**: Handled using forwarding from MEM→EX, WB→EX, and EX→ID stages
-- **Load-Use Hazards**: Detected and handled by stalling the pipeline
-- **Control Hazards**: Branches are resolved in ID stage with "not taken" prediction
+## ⚙️ Hazard Handling (Five-Stage Pipeline)
+
+### RAW (Read-After-Write) Hazards
+
+**Strategy:** Forwarding first, stalling only when necessary
+
+**Forwarding Paths:**
+- **EX→ID**: Forward from EX to ID for branch resolution (same cycle)
+- **MEM→ID**: Forward from MEM to ID for branches  
+- **MEM→EX**: Forward ALU results to next instruction
+- **WB→EX**: Forward from WB to EX
+
+**When Forwarding Isn't Enough:**
+- **Load-Use Hazard**: When instruction in EX is a LOAD and current instruction in ID needs that value
+- **Action:** Stall pipeline for 1 cycle (insert bubble in EX)
+- **Result:** Data available from WB stage after stall
+
+### Control Flow Hazards (Branches)
+
+**Branch Handling Strategy:**
+
+1. **Predict-Not-Taken:**
+   - When branch fetched in IF, assume NOT TAKEN
+   - PC speculatively updated to PC+4
+   - Next sequential instruction fetched
+
+2. **Branch Resolution in ID/RF Stage:**
+   - Compare rs1 and rs2 (with forwarding if needed)
+   - Calculate branch target: PC + imm_b
+   - Determine if branch actually taken
+
+3. **Handle Misprediction:**
+   - If branch IS taken: Flush IF/ID (set nop=True), redirect PC to target
+   - If branch NOT taken: Continue normally (prediction correct)
+   - **Penalty:** 1 cycle (one bubble in pipeline)
+
+**Example:**
+```
+Cycle N:   Branch in ID → Resolved as TAKEN
+Cycle N+1: IF/ID.nop = True (bubble), IF fetches from branch target
+Cycle N+2: Pipeline resumes with correct instruction
+```
+
+---
 
 ## Project Structure
 
@@ -166,15 +363,25 @@ Immediates are extracted and sign-extended according to the instruction type.
 4. **MEM (Memory Access)**: Loads from or stores to data memory
 5. **WB (Write Back)**: Writes results back to register file
 
-## Forwarding Paths
+## 📊 Performance Results Summary
 
-The five-stage pipeline implements forwarding to resolve RAW hazards:
+### Testcase Results
 
-- **EX→ID**: For branch resolution (computes ALU result early)
-- **MEM→EX**: Forward ALU result from MEM stage to EX stage
-- **WB→EX**: Forward result from WB stage to EX stage
-- **MEM→ID**: Forward ALU result from MEM stage to ID stage (for branches)
-- **WB→ID**: Forward result from WB stage to ID stage (for branches)
+| Testcase | Architecture | Cycles | Instructions | CPI | IPC |
+|----------|-------------|--------|--------------|-----|-----|
+| TC0 | Single-Stage | 7 | 6 | 1.167 | 0.857 |
+| TC0 | Five-Stage | 11 | 6 | 1.833 | 0.545 |
+| TC1 | Single-Stage | 40 | 39 | 1.026 | 0.975 |
+| TC1 | Five-Stage | 46 | 39 | 1.179 | 0.848 |
+| TC2 | Single-Stage | 36 | 35 | 1.029 | 0.972 |
+| TC2 | Five-Stage | 53 | 35 | 1.514 | 0.660 |
+
+### Key Findings
+
+- **Five-stage is 3-4x faster** (due to shorter clock cycle)
+- CPI increases with hazards (1.18-1.83 vs 1.0)
+- Clock frequency advantage (3.64x) dominates CPI disadvantage
+- **Speedup formula:** Speedup = (CPI_SS / CPI_FS) × (T_clock_SS / T_clock_FS) ≈ 3.1x
 
 ## Adding New Test Cases
 
@@ -288,7 +495,55 @@ If outputs don't match sample outputs:
 
 This is an educational project for computer architecture coursework.
 
-## Author
+---
 
-RISC-V Processor Simulator Implementation
+## 🎨 Generating Schematic Diagrams
+
+### For Task 1 & Task 2 Diagrams:
+
+1. Open `mermaid_diagrams.md`
+2. Copy the Mermaid code for Task 1 or Task 2
+3. Go to https://mermaid.live/
+4. Paste and render the diagram
+5. Export as PNG:
+   - Task 1 → Save as `figure1.png`
+   - Task 2 → Save as `figure2.png`
+6. Place PNG files in project root (same directory as LaTeX files)
+7. Compile `submission.latex`
+
+**Alternative:** Use Mermaid CLI:
+```bash
+npm install -g @mermaid-js/mermaid-cli
+mmdc -i mermaid_diagrams.md -o diagrams.png
+```
+
+---
+
+## 🧪 Testing & Verification
+
+### All Testcases Pass:
+- ✅ testcase0: Memory outputs match, Performance metrics correct
+- ✅ testcase1: Memory outputs match, Performance metrics correct  
+- ✅ testcase2: Memory outputs match (53 cycles, expected behavior)
+
+### Verification Commands:
+```bash
+# Run and compare
+make clean-run
+make compare-all
+
+# Should see:
+[OK] FS_DMEMResult.txt
+[OK] FS_RFResult.txt
+[OK] PerformanceMetrics.txt
+[OK] SS_DMEMResult.txt
+```
+
+---
+
+## 📝 Author
+
+**Nidhish Gautam** (ng3483)  
+RISC-V Processor Simulator Implementation  
+ECE GY 6913 - Computing Systems Architecture
 
