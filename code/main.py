@@ -327,7 +327,7 @@ class FiveStageCore(Core):
         if self.state.MEM_WB["nop"]:
             return
         # Count all instructions that reach WB (including stores, branches, etc.)
-            self.retired_instructions += 1
+        self.retired_instructions += 1
         # Write to register file if needed
         if self.state.MEM_WB["RegWrite"] and self.state.MEM_WB["rd"] != 0:
             self.myRF.writeRF(self.state.MEM_WB["rd"], self.state.MEM_WB["WriteData"] & 0xFFFFFFFF)
@@ -569,7 +569,7 @@ class FiveStageCore(Core):
             self.nextState.IF_ID["Instr"] = instr
             self.nextState.IF_ID["PC"] = fetch_pc
             self.nextState.IF["PC"] = (fetch_pc + 4) & 0xFFFFFFFF
-                     self.nextState.IF["nop"] = False
+            self.nextState.IF["nop"] = False
 
             if self.redirect:
                 # We fetched from the target; ensure the wrong-path fetch is dropped.
@@ -587,20 +587,28 @@ class FiveStageCore(Core):
 
         printstate.append("EX.nop: " + str(state.ID_EX["nop"]) + "\n")
         ex_instr = state.ID_EX["instr"]
-        ex_instr_str = format(ex_instr & 0xFFFFFFFF, "032b") if not state.ID_EX["nop"] else ""
+        # If instruction is zero, print empty string; otherwise print 32-bit
+        if ex_instr == 0:
+            ex_instr_str = ""
+        else:
+            ex_instr_str = format(ex_instr & 0xFFFFFFFF, "032b")
         printstate.append("EX.instr: " + ex_instr_str + "\n")
         printstate.append("EX.Read_data1: " + format(state.ID_EX["Read_data1"] & 0xFFFFFFFF, "032b") + "\n")
         printstate.append("EX.Read_data2: " + format(state.ID_EX["Read_data2"] & 0xFFFFFFFF, "032b") + "\n")
-        # Format immediate: 32-bit when nop, 12-bit when instruction
-        if state.ID_EX["nop"]:
-            printstate.append("EX.Imm: " + format(state.ID_EX["Imm"] & 0xFFFFFFFF, "032b") + "\n")
+        # Format immediate: 32-bit if instr is 0, otherwise 12-bit
+        imm_val = state.ID_EX["Imm"] & 0xFFFFFFFF
+        if ex_instr == 0:
+            printstate.append("EX.Imm: " + format(imm_val, "032b") + "\n")
         else:
-            imm_val = state.ID_EX["Imm"] & 0xFFFFFFFF
             imm_12bit = imm_val & 0xFFF
             printstate.append("EX.Imm: " + format(imm_12bit, "012b") + "\n")
         printstate.append("EX.Rs: " + format(state.ID_EX["rs1"] & 0x1F, "05b") + "\n")
         printstate.append("EX.Rt: " + format(state.ID_EX["rs2"] & 0x1F, "05b") + "\n")
-        printstate.append("EX.Wrt_reg_addr: " + format(state.ID_EX["rd"] & 0x1F, "05b") + "\n")
+        # Write register address: 5-bit if instr is 0, otherwise 6-bit (seems weird but matches sample)
+        if ex_instr == 0:
+            printstate.append("EX.Wrt_reg_addr: " + format(state.ID_EX["rd"] & 0x1F, "05b") + "\n")
+        else:
+            printstate.append("EX.Wrt_reg_addr: " + format(state.ID_EX["rd"] & 0x3F, "06b") + "\n")
         printstate.append("EX.is_I_type: " + str(1 if state.ID_EX["ALUSrc"] else 0) + "\n")
         printstate.append("EX.rd_mem: " + str(state.ID_EX["MemRead"]) + "\n")
         printstate.append("EX.wrt_mem: " + str(state.ID_EX["MemWrite"]) + "\n")
