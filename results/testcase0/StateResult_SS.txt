@@ -20,9 +20,9 @@ IF.PC: 20
 IF.nop: False
 ----------------------------------------------------------------------
 State after executing cycle: 5
-IF.PC: 20
+IF.PC: 24
 IF.nop: True
 ----------------------------------------------------------------------
 State after executing cycle: 6
-IF.PC: 20
+IF.PC: 24
 IF.nop: True

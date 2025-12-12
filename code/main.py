@@ -205,7 +205,7 @@ class SingleStageCore(Core):
         if opcode == 0x7f: # HALT
             self.retired_instructions += 1
             self.nextState.IF["nop"] = True
-            self.nextState.IF["PC"] = PC
+            self.nextState.IF["PC"] = (PC + 4) & 0xFFFFFFFF  # Increment PC even for HALT
             self.halted = True
             self.myRF.outputRF(self.cycle)
             self.printState(self.nextState, self.cycle)
@@ -306,6 +306,12 @@ class FiveStageCore(Core):
         self.EX_stage()
         # 4. ID Stage
         self.ID_stage()
+        
+        # Flush IF_ID pipeline register when branch/jump is taken
+        # This discards the speculatively fetched wrong-path instruction
+        if self.redirect:
+            self.nextState.IF_ID["nop"] = True
+        
         # 5. IF Stage
         self.IF_stage()
 
@@ -361,19 +367,22 @@ class FiveStageCore(Core):
         val = default_val
         if reg_num == 0:
             return val
-        # Forward from EX/MEM (ALU result) - highest priority if not a load
-        # EX_MEM contains instruction that was in EX stage in previous cycle, now in MEM stage
-        # Check if that instruction writes to the register we need
-        forwarded_from_mem = False
-        if (not self.state.EX_MEM["nop"] and self.state.EX_MEM["RegWrite"] and
+        # Forward from nextState.EX_MEM (ALU result from EX stage in current cycle) - highest priority
+        # This is used for branch resolution in ID when EX has just computed a needed value
+        forwarded = False
+        if (hasattr(self, 'nextState') and not self.nextState.EX_MEM["nop"] and 
+                self.nextState.EX_MEM["RegWrite"] and self.nextState.EX_MEM["rd"] == reg_num):
+            if not self.nextState.EX_MEM["MemRead"]:
+                val = self.nextState.EX_MEM["ALUResult"] & 0xFFFFFFFF
+                forwarded = True
+        # Forward from EX/MEM (from previous cycle) - if not already forwarded
+        if not forwarded and (not self.state.EX_MEM["nop"] and self.state.EX_MEM["RegWrite"] and
                 self.state.EX_MEM["rd"] == reg_num):
-            # Can forward ALU result if not a load (loads need to wait for memory read)
             if not self.state.EX_MEM["MemRead"]:
                 val = self.state.EX_MEM["ALUResult"] & 0xFFFFFFFF
-                forwarded_from_mem = True
-            # If it's a load, we can't forward yet (load-use hazard should have stalled)
-        # Forward from MEM/WB - only if EX/MEM didn't forward (lower priority)
-        if not forwarded_from_mem:
+                forwarded = True
+        # Forward from MEM/WB - lowest priority
+        if not forwarded:
             if (not self.state.MEM_WB["nop"] and self.state.MEM_WB["RegWrite"] and
                     self.state.MEM_WB["rd"] == reg_num):
                 val = self.state.MEM_WB["WriteData"] & 0xFFFFFFFF
@@ -460,7 +469,7 @@ class FiveStageCore(Core):
             self.nextState.IF_ID = self.state.IF_ID.copy()
             self.nextState.IF = self.state.IF.copy()
             return
-
+        
         is_halt = (opcode == 0x7f)
         # Register reads with simple forwarding for branch decisions
         val1 = self.myRF.readRF(rs1)
@@ -542,9 +551,18 @@ class FiveStageCore(Core):
             self.nextState.IF["nop"] = self.state.IF["nop"]
             return
 
-        fetch_pc = self.redirect_pc if self.redirect else self.state.IF["PC"]
+        # When redirect is set, IF_ID was already flushed to NOP in step()
+        # Set PC to redirect target so next cycle fetches from there
+        # Don't fetch anything this cycle (the bubble cycle)
+        if self.redirect:
+            self.nextState.IF["PC"] = self.redirect_pc
+            self.nextState.IF["nop"] = False
+            # IF_ID is already set to nop by the flush in step(), don't overwrite it
+            return
 
-        if self.state.IF["nop"] and not self.redirect:
+        fetch_pc = self.state.IF["PC"]
+
+        if self.state.IF["nop"]:
             self.nextState.IF["nop"] = True
             return
 
@@ -558,22 +576,17 @@ class FiveStageCore(Core):
         opcode = instr & 0x7f
 
         if opcode == 0x7f:  # HALT
-            # Inject HALT into pipeline and stop fetching further
             self.nextState.IF_ID["nop"] = False
             self.nextState.IF_ID["Instr"] = instr
             self.nextState.IF_ID["PC"] = fetch_pc
-            self.nextState.IF["PC"] = fetch_pc  # hold PC
-            self.nextState.IF["nop"] = True    # stop further fetches
+            self.nextState.IF["PC"] = (fetch_pc + 4) & 0xFFFFFFFF
+            self.nextState.IF["nop"] = True
         else:
             self.nextState.IF_ID["nop"] = False
             self.nextState.IF_ID["Instr"] = instr
             self.nextState.IF_ID["PC"] = fetch_pc
             self.nextState.IF["PC"] = (fetch_pc + 4) & 0xFFFFFFFF
             self.nextState.IF["nop"] = False
-
-            if self.redirect:
-                # We fetched from the target; ensure the wrong-path fetch is dropped.
-                pass
 
     def printState(self, state, cycle):
         printstate = ["-"*70 + "\n", "State after executing cycle: " + str(cycle) + "\n"]

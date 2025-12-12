@@ -152,9 +152,9 @@ IF.PC: 152
 IF.nop: False
 ----------------------------------------------------------------------
 State after executing cycle: 38
-IF.PC: 152
+IF.PC: 156
 IF.nop: True
 ----------------------------------------------------------------------
 State after executing cycle: 39
-IF.PC: 152
+IF.PC: 156
 IF.nop: True
